@@ -3,6 +3,7 @@ import './App.css';
 
 function App() {
   const canvasRef = useRef(null);
+  const [canvasSize, setCanvasSize] = useState({ width: window.innerWidth, height: window.innerHeight });
   const [vertices, setVertices] = useState([
     { x: 50, y: 50 }, // Vertex 1
     { x: 100, y: 150 }, // Vertex 2
@@ -11,29 +12,65 @@ function App() {
   const [isDragging, setIsDragging] = useState(false);
   const [draggingVertex, setDraggingVertex] = useState(-1);
 
+  const drawText = (ctx, text, x, y) => {
+    ctx.font = '16px Arial';
+    ctx.fillStyle = '#5FBDFF';
+    ctx.fillText(text, x, y);
+  };
+  
+  const calculateAngles = (vertices) => {
+    const length = (p1, p2) => Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
+    const a = length(vertices[1], vertices[2]);
+    const b = length(vertices[0], vertices[2]);
+    const c = length(vertices[0], vertices[1]);
+  
+    // Calculate angles using the law of cosines
+    const angleA = Math.acos((b * b + c * c - a * a) / (2 * b * c)) * (180 / Math.PI);
+    const angleB = Math.acos((a * a + c * c - b * b) / (2 * a * c)) * (180 / Math.PI);
+    const angleC = Math.acos((a * a + b * b - c * c) / (2 * a * b)) * (180 / Math.PI);
+  
+    return [angleA, angleB, angleC];
+  };
+
   const drawTriangle = (ctx) => {
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height); // Clear canvas
-
+  
     ctx.beginPath();
     ctx.moveTo(vertices[0].x, vertices[0].y);
     ctx.lineTo(vertices[1].x, vertices[1].y);
     ctx.lineTo(vertices[2].x, vertices[2].y);
     ctx.closePath();
-
+  
     ctx.lineWidth = 2;
-    ctx.strokeStyle = '#666666';
+    ctx.strokeStyle = 'white';
     ctx.stroke();
-    ctx.fillStyle = "#FFCC00";
-    ctx.fill();
-
+  
     // Draw dots on vertices
     vertices.forEach((vertex, index) => {
       ctx.beginPath();
       ctx.arc(vertex.x, vertex.y, 5, 0, Math.PI * 2);
-      ctx.fillStyle = draggingVertex === index ? 'red' : 'black';
+      ctx.fillStyle = draggingVertex === index ? '#5FBDFF' : 'white';
       ctx.fill();
     });
+  
+    const angles = calculateAngles(vertices);
+  
+    // Draw text for angles
+    drawText(ctx, `${angles[0].toFixed(1)}°`, vertices[0].x + 10, vertices[0].y - 10);
+    drawText(ctx, `${angles[1].toFixed(1)}°`, vertices[1].x + 10, vertices[1].y - 10);
+    drawText(ctx, `${angles[2].toFixed(1)}°`, vertices[2].x + 10, vertices[2].y - 10);
+  
+    const midpoints = [
+      { x: (vertices[0].x + vertices[1].x) / 2, y: (vertices[0].y + vertices[1].y) / 2 },
+      { x: (vertices[1].x + vertices[2].x) / 2, y: (vertices[1].y + vertices[2].y) / 2 },
+      { x: (vertices[0].x + vertices[2].x) / 2, y: (vertices[0].y + vertices[2].y) / 2 }
+    ];
+  
+    drawText(ctx, 'Face 1', midpoints[0].x, midpoints[0].y);
+    drawText(ctx, 'Face 2', midpoints[1].x, midpoints[1].y);
+    drawText(ctx, 'Face 3', midpoints[2].x, midpoints[2].y);
   };
+  
 
   const checkHover = (x, y) => {
     const hoverRadius = 5;
@@ -43,8 +80,22 @@ function App() {
   };
 
   useEffect(() => {
+    const updateCanvasSize = () => {
+      setCanvasSize({ width: window.innerWidth, height: window.innerHeight });
+    };
+
+    window.addEventListener('resize', updateCanvasSize);
+
+    return () => {
+      window.removeEventListener('resize', updateCanvasSize);
+    };
+  }, []);
+
+  useEffect(() => {
     const canvas = canvasRef.current;
     const context = canvas.getContext('2d');
+    canvas.width = canvasSize.width;
+    canvas.height = canvasSize.height;
     drawTriangle(context);
 
     const handleMouseDown = (event) => {
